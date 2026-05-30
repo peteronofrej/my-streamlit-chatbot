@@ -10,9 +10,11 @@ client = OpenAI(
     api_key=st.secrets["OPENAI_API_KEY"]
 )
 
+PDF_FILE = "Fin_EACB comments EC cons banking competitiveness 20260417.pdf"
+
 @st.cache_data
 def load_eacb_document():
-    reader = PdfReader("EACB_Position_Paper.pdf")
+    reader = PdfReader(PDF_FILE)
 
     text = ""
 
@@ -38,14 +40,8 @@ if question:
 
     if mode == "Ask a general question":
         messages = [
-            {
-                "role": "system",
-                "content": "You are a helpful assistant."
-            },
-            {
-                "role": "user",
-                "content": question
-            }
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": question}
         ]
 
     else:
@@ -65,10 +61,7 @@ EACB DOCUMENT:
 {document_text}
 """
             },
-            {
-                "role": "user",
-                "content": question
-            }
+            {"role": "user", "content": question}
         ]
 
     with st.chat_message("user"):
