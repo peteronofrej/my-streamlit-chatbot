@@ -2,59 +2,84 @@ import streamlit as st
 from openai import OpenAI
 from pypdf import PdfReader
 
-st.title("Peter's Document Chatbot")
+st.set_page_config(page_title="Peter's AI Assistant")
+
+st.title("Peter's AI Assistant")
 
 client = OpenAI(
     api_key=st.secrets["OPENAI_API_KEY"]
 )
 
-uploaded_file = st.file_uploader(
-    "Upload a PDF document",
-    type="pdf"
-)
+@st.cache_data
+def load_eacb_document():
+    reader = PdfReader("EACB_Position_Paper.pdf")
 
-if uploaded_file:
-    reader = PdfReader(uploaded_file)
-
-    document_text = ""
+    text = ""
 
     for page in reader.pages:
-        text = page.extract_text()
-        if text:
-            document_text += text + "\n"
+        page_text = page.extract_text()
+        if page_text:
+            text += page_text + "\n"
 
-    st.success("PDF uploaded successfully.")
+    return text
 
-    question = st.chat_input("Ask a question about the document")
 
-    if question:
-        with st.chat_message("user"):
-            st.write(question)
+mode = st.radio(
+    "What do you want to do?",
+    [
+        "Ask a general question",
+        "Ask about the EACB document"
+    ]
+)
 
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You answer questions based only on the uploaded PDF document."
-                },
-                {
-                    "role": "user",
-                    "content": f"""
-Here is the document:
+question = st.chat_input("Type your question here")
+
+if question:
+
+    if mode == "Ask a general question":
+        messages = [
+            {
+                "role": "system",
+                "content": "You are a helpful assistant."
+            },
+            {
+                "role": "user",
+                "content": question
+            }
+        ]
+
+    else:
+        document_text = load_eacb_document()
+
+        messages = [
+            {
+                "role": "system",
+                "content": f"""
+You are an expert assistant helping users understand the EACB document.
+
+Answer the user's question based mainly on the EACB document below.
+If the document does not contain enough information, clearly say that.
+
+EACB DOCUMENT:
 
 {document_text}
-
-Question:
-{question}
 """
-                }
-            ]
-        )
+            },
+            {
+                "role": "user",
+                "content": question
+            }
+        ]
 
-        answer = response.choices[0].message.content
+    with st.chat_message("user"):
+        st.write(question)
 
-        with st.chat_message("assistant"):
-            st.write(answer)
-else:
-    st.info("Please upload a PDF document first.")
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=messages
+    )
+
+    answer = response.choices[0].message.content
+
+    with st.chat_message("assistant"):
+        st.write(answer)
