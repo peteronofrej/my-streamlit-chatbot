@@ -1,40 +1,60 @@
 import streamlit as st
 from openai import OpenAI
+from pypdf import PdfReader
 
-st.title("Peter's AI Chatbot")
+st.title("Peter's Document Chatbot")
 
 client = OpenAI(
     api_key=st.secrets["OPENAI_API_KEY"]
 )
 
-if "messages" not in st.session_state:
-    st.session_state.messages = []
+uploaded_file = st.file_uploader(
+    "Upload a PDF document",
+    type="pdf"
+)
 
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.write(message["content"])
+if uploaded_file:
+    reader = PdfReader(uploaded_file)
 
-prompt = st.chat_input("Ask me anything")
+    document_text = ""
 
-if prompt:
+    for page in reader.pages:
+        text = page.extract_text()
+        if text:
+            document_text += text + "\n"
 
-    st.session_state.messages.append(
-        {"role": "user", "content": prompt}
-    )
+    st.success("PDF uploaded successfully.")
 
-    with st.chat_message("user"):
-        st.write(prompt)
+    question = st.chat_input("Ask a question about the document")
 
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=st.session_state.messages
-    )
+    if question:
+        with st.chat_message("user"):
+            st.write(question)
 
-    answer = response.choices[0].message.content
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You answer questions based only on the uploaded PDF document."
+                },
+                {
+                    "role": "user",
+                    "content": f"""
+Here is the document:
 
-    st.session_state.messages.append(
-        {"role": "assistant", "content": answer}
-    )
+{document_text}
 
-    with st.chat_message("assistant"):
-        st.write(answer)
+Question:
+{question}
+"""
+                }
+            ]
+        )
+
+        answer = response.choices[0].message.content
+
+        with st.chat_message("assistant"):
+            st.write(answer)
+else:
+    st.info("Please upload a PDF document first.")
