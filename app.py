@@ -3,42 +3,38 @@ from openai import OpenAI
 
 st.title("Peter's AI Chatbot")
 
-api_key = st.text_input(
-    "Enter your OpenAI API Key",
-    type="password"
+client = OpenAI(
+    api_key=st.secrets["OPENAI_API_KEY"]
 )
 
-if api_key:
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
-    client = OpenAI(api_key=api_key)
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.write(message["content"])
 
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
+prompt = st.chat_input("Ask me anything")
 
-    for message in st.session_state.messages:
-        st.chat_message(message["role"]).write(
-            message["content"]
-        )
+if prompt:
 
-    prompt = st.chat_input("Ask me something")
+    st.session_state.messages.append(
+        {"role": "user", "content": prompt}
+    )
 
-    if prompt:
+    with st.chat_message("user"):
+        st.write(prompt)
 
-        st.session_state.messages.append(
-            {"role": "user", "content": prompt}
-        )
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=st.session_state.messages
+    )
 
-        st.chat_message("user").write(prompt)
+    answer = response.choices[0].message.content
 
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=st.session_state.messages
-        )
+    st.session_state.messages.append(
+        {"role": "assistant", "content": answer}
+    )
 
-        answer = response.choices[0].message.content
-
-        st.session_state.messages.append(
-            {"role": "assistant", "content": answer}
-        )
-
-        st.chat_message("assistant").write(answer)
+    with st.chat_message("assistant"):
+        st.write(answer)
